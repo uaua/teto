@@ -238,7 +238,7 @@ public:
   
 private:
   
-  static void iterateInternal(const Field& f,vector<MinoType>& s,const Callback& callback,int depth,vector<Decision> d,const MinoType& hold,bool prohibits[],int line,int len,bool preHold=false) {
+  static void iterateInternal(const Field& f,vector<MinoType>& s,const Callback& callback,int depth,vector<Decision> d,const MinoType& hold,bool prohibits[],const int line,const int len,bool preHold=false) {
     //printf("%d %zd %d %d\n",depth,s.size(),preHold,hold.k);
     if( depth == int(s.size()) ) {
       callback(f,d,line,len,hold);
@@ -253,10 +253,10 @@ private:
           for( int y = 0; y < FIELD_HEIGHT; y++ ) {
             for( int i = 0; i < msz; i++ ) {
               for( int j = 0; j < msz; j++ ) {
-                if( v.at(i).at(j) &&
+                if( v[i][j] &&
                     ( x+j < 0 || x+j >= FIELD_WIDTH || y+i<0 || y+i >= FIELD_HEIGHT ||
                       f.get(x+j,y+i).cell()) ) {
-                  if(prohibits[x+i]) pos = -1;
+                  if(prohibits[x+j]) pos = -1;
                   goto next;
                 }
               }
@@ -428,7 +428,7 @@ public:
     priority_queue<State> state;
     bool prohibits[FIELD_WIDTH] = {};
     for( int i = FIELD_WIDTH-3; i < FIELD_WIDTH; i++ ) {
-      prohibits[i] = (limits <= 17 && limits >= 13);
+      prohibits[i] = (limits <= 16 && limits >= 13);
     }
     Simulator::iterate(f,v,[&](const Field& f,const vector<Decision>& dc,int line,int len,const MinoType& hold){
         long long sc = eval(f,line,len);
@@ -467,6 +467,7 @@ public:
     assert(state.size() != 0);
     int pplen=plen;
     MinoType phold = hold;
+    vector<int> ls;
     
     while(!state.empty()) {
       const auto& a = state.top().l;
@@ -479,18 +480,20 @@ public:
       if( akan_best < sc ) {
         akan_best = sc;
         akan = state.top().first;
+        ls = b;
         if(akan.h) hold = s[0];
         else hold = phold;
         //plen = len;
-        if( a[0] > 0 ) plen = pplen+1;
+        if( b[0] > 1 ) plen = pplen+1;
         else plen = 0;
       }
       state.pop();
     }
-    printf("score:%lld %lld %d\n",best,akan_best,plen);
+    printf("score:%lld %lld %d %d\n",best,akan_best,plen,ls[0]);
     assert(d.r>=0||akan.r>=0);
-    if(d.r<0)return akan;
-    return d;
+    return akan;
+    //if(d.r<0)return akan;
+    //return d;
   }
 };
 

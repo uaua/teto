@@ -361,27 +361,40 @@ void go()
           SDL_SaveBMP(suf,filename);
         }
       }
+      //*
       static int file=0;
-      if( file < 50 ) {
+      if( file < 500 ) {
         char filename[256];
-        sprintf(filename,"%d.bmp",file++);
+        sprintf(filename,"%d.bmp",file);
         SDL_SaveBMP(suf,filename);
+        sprintf(filename,"%d.txt",file);
+        FILE* fp = fopen(filename,"w");
+        for( int i = 0; i < FIELD_HEIGHT; i++ ) {
+          for( int j = 0; j < FIELD_WIDTH; j++ ) {
+            fprintf(fp,"%d",f.get(j,i).cell());
+          }
+          fprintf(fp,"\n");
+        }
+        fclose(fp);
+        file += 1;
       }
+      //*/
       vector<MinoType> s;
       s.reserve(11);
       //ai.think();
       for( size_t i = 0; i < nekumino.size(); i++ ) {
         s.emplace_back(nekumino[i]);
       }
-      Printer(f,s,ai.hold).print();
       int preHold = ai.hold.k;
       dc = ai.think(f,s);
       if( dc.h && preHold == -1 ) nextmino = next2();
       prevField = f;
-      printf("x:%d r:%d next:%d\n",dc.x,dc.r,nekumino[0]);
       //Simulator::putMino(f,d.h?(pre<0?seq[1]:pre):seq[0],d);
-      nekumino[0] = dc.h?(preHold<0?s[1].k:preHold):s[0].k;
+      nekumino[0] = dc.h?(preHold<0?s[1].k:preHold):s[0].k; 
+      printf("x:%d y:%d r:%d h:%d next:%d\n",dc.x,dc.y,dc.r,dc.h,nekumino[0]);
       Simulator::putMino(f,nekumino[0],dc);
+      puts("risou");
+      Printer(f,s,ai.hold).print();
       putField = f;
       state = PUT1;
     }
@@ -426,7 +439,7 @@ void go()
     Sleep(INPUT_INTERVAL);
     KeyAction(VK_SPACE, false);
     //Sleep(350); 
-    Sleep(350); 
+    Sleep(400); 
 #ifdef DEBUG
     puts("put2");
 #endif
