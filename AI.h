@@ -97,26 +97,20 @@ static const vector<Mino> mino = {
   Mino({
       {{1,1,0},{0,1,1},{0,0,0}},
       {{0,0,1},{0,1,1},{0,1,0}},
-        /*
       {{0,0,0},{1,1,0},{0,1,1}},
       {{0,1,0},{1,1,0},{1,0,0}},
-        */
     }),
   Mino({
       {{0,1,1},{1,1,0},{0,0,0}},
       {{0,1,0},{0,1,1},{0,0,1}},
-        /*
       {{0,0,0},{0,1,1},{1,1,0}},
       {{1,0,0},{1,1,0},{0,1,0}},
-        */
     }),
   Mino({
       {{0,0,0,0},{1,1,1,1},{0,0,0,0},{0,0,0,0}},
       {{0,0,1,0},{0,0,1,0},{0,0,1,0},{0,0,1,0}},
-        /*
       {{0,0,0,0},{0,0,0,0},{1,1,1,1},{0,0,0,0}},
       {{0,1,0,0},{0,1,0,0},{0,1,0,0},{0,1,0,0}},
-        */
     }),
   Mino({{
       {1,1},
@@ -201,10 +195,10 @@ public:
 class Simulator {
 public:
   typedef std::function<void(const Field&,const std::vector<Decision>&,int,int,const MinoType&)> Callback;
-  static void iterate(const Field& f,const vector<MinoType>& s,const Callback& callback,const MinoType& hold,int len=0) {
+  static void iterate(const Field& f,const vector<MinoType>& s,const Callback& callback,const MinoType& hold,bool prohibits[],int len=0) {
     vector<MinoType> ms(s);
     //printf("%zd %zd\n",s.size(),ms.size());
-    iterateInternal(f,ms,callback,0,vector<Decision>(),hold,0,len);
+    iterateInternal(f,ms,callback,0,vector<Decision>(),hold,prohibits,0,len,false);
   }
   static int putMino(Field& f,const MinoType& ss,const Decision& d) {
     const MinoType& s = ss;
@@ -244,7 +238,7 @@ public:
   
 private:
   
-  static void iterateInternal(const Field& f,vector<MinoType>& s,const Callback& callback,int depth,vector<Decision> d,const MinoType& hold,int line,int len,bool preHold=false) {
+  static void iterateInternal(const Field& f,vector<MinoType>& s,const Callback& callback,int depth,vector<Decision> d,const MinoType& hold,bool prohibits[],int line,int len,bool preHold=false) {
     //printf("%d %zd %d %d\n",depth,s.size(),preHold,hold.k);
     if( depth == int(s.size()) ) {
       callback(f,d,line,len,hold);
@@ -261,7 +255,10 @@ private:
               for( int j = 0; j < msz; j++ ) {
                 if( v.at(i).at(j) &&
                     ( x+j < 0 || x+j >= FIELD_WIDTH || y+i<0 || y+i >= FIELD_HEIGHT ||
-                      f.get(x+j,y+i).cell())) goto next;
+                      f.get(x+j,y+i).cell()) ) {
+                  if(prohibits[x+i]) pos = -1;
+                  goto next;
+                }
               }
             }
             pos = y;
@@ -280,7 +277,7 @@ private:
             //assert((!preHold && hold.k<0) || (preHold && hold.k>=0));
             int l = putMino(next,s[depth],dc);
             d.push_back(dc);
-            iterateInternal(next,s,callback,depth+1,d,hold,line+l,l>0?len+1:0,false);
+            iterateInternal(next,s,callback,depth+1,d,hold,prohibits,line+l,l>0?len+1:0,false);
             d.pop_back();
           }
         }
@@ -291,11 +288,11 @@ private:
         //d.push_back(dc);
         if( hold.k<0 && depth+1 < int(s.size()) ) {
           MinoType nextHold = s[depth];
-          iterateInternal(f,s,callback,depth+1,d,nextHold,line,len,true);
+          iterateInternal(f,s,callback,depth+1,d,nextHold,prohibits,line,len,true);
         } else if(hold.k>=0) {
           MinoType nextHold = hold;
           swap(s[depth],nextHold);
-          iterateInternal(f,s,callback,depth,d,nextHold,line,len,true);
+          iterateInternal(f,s,callback,depth,d,nextHold,prohibits,line,len,true);
           swap(s[depth],nextHold);
         }
       }
@@ -323,9 +320,11 @@ private:
         //hs += (abs(h[i]-h[i+1])>=3?1:0);
       }
     } else {
+      int mmm = *max_element(h.begin(),h.end());
       for( int i = 0; i < FIELD_WIDTH; i++ ) {
-        if( i >= 7 && h[i] > 0 ) return 11451400;
+        if( mmm <= 17 && i >= 7 && h[i] > 0 ) return 11451400;
         if( i == FIELD_WIDTH-1 ) continue;
+        if( i+1 >= 7 ) continue;
         //if( h[i] >= 10 ) return 114514;
         if( h[i] == m || h[i+1] == m ) continue;
         hs += abs(h[i]-h[i+1]);
@@ -427,6 +426,10 @@ public:
       w[i] = s[i+1];
     }
     priority_queue<State> state;
+    bool prohibits[FIELD_WIDTH] = {};
+    for( int i = FIELD_WIDTH-3; i < FIELD_WIDTH; i++ ) {
+      prohibits[i] = (limits <= 17 && limits >= 13);
+    }
     Simulator::iterate(f,v,[&](const Field& f,const vector<Decision>& dc,int line,int len,const MinoType& hold){
         long long sc = eval(f,line,len);
         State s(f,sc);
@@ -435,7 +438,7 @@ public:
         s.r.push_back(len);
         s.hold = hold;
         state.push(s);
-      },hold,plen);
+      },hold,prohibits,plen);
     printf("sz:%zd\n",state.size());
 
     for( int i = 0; i < int(w.size()-1); i+=2 ) {
@@ -453,7 +456,7 @@ public:
             s.r.push_back(len);
             s.hold = hold;
             q.push(s);
-          },state.top().hold,state.top().r.back());
+          },state.top().hold,prohibits,state.top().r.back());
         state.pop();
       }
       printf("szz:%zd\n",state.size());
@@ -464,6 +467,7 @@ public:
     assert(state.size() != 0);
     int pplen=plen;
     MinoType phold = hold;
+    
     while(!state.empty()) {
       const auto& a = state.top().l;
       const auto& b = state.top().r;

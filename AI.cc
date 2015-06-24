@@ -7,7 +7,7 @@ int main(void)
 {
   int sz = 7;
   int S=10000;
-  vector<MinoType> seq(3),seqs(S*3);
+  vector<MinoType> seq(4),seqs(S*3);
   srand(time(0));
   for( int j = 0; j < S*3; j++ ) {
     seqs[j] = MinoType(rand()%sz);
@@ -33,7 +33,7 @@ int main(void)
       Simulator::putMino(f,d.h?(pre<0?seq[1]:pre):seq[0],d);
       //printf("x:%d r:%d hold:%d\n",d.x,d.r,ai.hold.k);
       //printf("%d\n",ai.plen);
-      Sleep(300);
+      Sleep(1000);
     } else {
       break;
     }
